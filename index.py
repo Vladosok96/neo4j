@@ -1,14 +1,7 @@
-# -*- coding: cp1251 -*-
-
 from neo4j import GraphDatabase
+# import logging
+# from neo4j.exceptions import ServiceUnavailable
 import PySimpleGUI as sg
-
-
-def bool_to_YN(value):
-    if value:
-        return "Есть"
-    else:
-        return "Нет"
 
 
 class App:
@@ -20,61 +13,76 @@ class App:
         # Don't forget to close the driver connection when you are finished with it
         self.driver.close()
 
-    def query(self, query):
+    def query(self, text):
         with self.driver.session() as session:
-            session.read_transaction(self._query, query)
+            result = session.read_transaction(self._query, text)
+            # print(result)
+            return result
 
     @staticmethod
-    def _query(tx, query):
-        tx.run(query)
+    def _query(tx, text):
+        result = tx.run(text)
+        return [row["name"] for row in result]
+   
 
 
 if __name__ == "__main__":
     # Aura queries use an encrypted connection using the "neo4j+s" URI scheme
-    uri = "neo4j+s://3ab69a9f.databases.neo4j.io:7687"
+    uri = "neo4j+s://f5772c29.databases.neo4j.io"
     user = "neo4j"
-    password = "pHgWsI59E-gLjENUMh1ujWOlsznwJMc4CzWCzQYQXyQ"
+    password = "YGi1DC9ZqFQWFOvKrgiDCqUbmWgfCjuGRjUnKXS2y_g"
     app = App(uri, user, password)
+    screens = app.query("MATCH (sc:Screen)-[sem:Semantic]-(scs) WHERE sem.name = 'РЇРІР»СЏРµС‚СЃСЏВ СЂР°Р·РЅРѕРІРёРґРЅРѕСЃС‚СЊСЋ' return scs.name AS name;")
+    interfaceObj = app.query("MATCH (ob:Object)-[sem:Semantic]-(obs) WHERE sem.name = 'РЇРІР»СЏРµС‚СЃСЏВ СЂР°Р·РЅРѕРІРёРґРЅРѕСЃС‚СЊСЋ' return obs.name AS name;")
 
-    # Добавление элементов интерфейса
-    layout = [[sg.Text('Имя пылесоса'), sg.Input()],
-              [sg.Text('Тип уборки'), sg.Combo(["Только влажная", "Только сухая", "Сухая и влажная"], default_value="Только влажная")],
-              [sg.Text('Установка на З/У'), sg.Checkbox("")],
-              [sg.Text('Тип датчиков'), sg.Combo(["Инфракрасные", "Ультразвуковые", "Оптические"], default_value="Инфракрасные")],
-              [sg.Text('Управление со смартфона'), sg.Checkbox("")],
-              [sg.Text('Доп. функции:')],
-              [sg.Combo(["Построение карты помещения", "Режим быстрой уборки",
-                         "Программирование уборки по времени и дням недели", "Таймер",
-                         "Сигнал при разрядке аккумулятора", "Сигнал при застревании",
-                         "Ограничение времени уборки", "Ароматизация помещения"], default_value="Построение карты помещения")],
-              [sg.Combo(["Построение карты помещения", "Режим быстрой уборки",
-                         "Программирование уборки по времени и дням недели", "Таймер",
-                         "Сигнал при разрядке аккумулятора", "Сигнал при застревании",
-                         "Ограничение времени уборки", "Ароматизация помещения"], default_value="Режим быстрой уборки")],
-              [sg.Button('Отправить'), sg.Button('Выйти')]]
-
-    # Создание окна
-    window = sg.Window('Добавление робота пылесоса', layout)
-
-    # Цикл событий
-    while True:
+    layout = [
+        # [sg.Button('РћР±РЅРѕРІРёС‚СЊ')],
+        [sg.Text('РЎС†РµРЅР°СЂРёР№ РїРѕРІРµРґРµРЅРёСЏ'), sg.Button('РЎ СЂРµРіРёСЃС‚СЂР°С†РёРµР№'), sg.Button('Р‘РµР· СЂРµРіРёСЃС‚СЂР°С†РёРё')],
+        [sg.Text('Р­РєСЂР°РЅС‹:')],
+        [sg.Combo(screens, default_value=screens[0]), sg.Button('РСЃРєР°С‚СЊ СЌРєСЂР°РЅ')],
+        [sg.Text('Р­Р»РµРјРµРЅС‚С‹ РёРЅС‚РµСЂС„РµР№СЃР°:')],
+        [sg.Combo(interfaceObj, default_value=interfaceObj[0]), sg.Button('РСЃРєР°С‚СЊ СЌР»РµРјРµРЅС‚')],
+        [sg.Output(size=(88, 20))],
+        [sg.Button('Р’С‹Р№С‚Рё')]
+    ]
+    window = sg.Window('Bruh neo4j', layout)
+    while True:                             # The Event Loop
         event, values = window.read()
-        if event == sg.WIN_CLOSED or event == 'Выйти':  # Закрытие окна или нажатие на кнопку выхода
-            app.query("""MATCH (ee) DETACH DELETE ee""")
-            app.close()
+        if event in (sg.WIN_CLOSED, 'Р’С‹Р№С‚Рё'):
             break
-
-        if event == 'Отправить':  # Нажатие на кнопку отправки
-            if values[0] != '':
-                query = 'Create (cleaner:Cleaner {name: "' + values[0] + '", cleaning_type: "' + values[1] + '", remote_control: "' + bool_to_YN(values[4]) + '"}), '
-                if values[2]:
-                    query += '(charger:Charger {name: "' + values[0] + 'Charger"}), '
-                query += '(sensor:Sensor {name: "' + values[3] + '"}), (main_function:MainFunction {name: "Уборка"}), (addition_function1:AdditionFunction1 {name:"' + values[5] + '"}), (addition_function2:AdditionFunction2 {name:"' + values[6] + '"})'
-                if values[2]:
-                    query += ', (charger)-[:Является_частью]->(cleaner)'
-                query += ', (sensor)-[:Является_частью]->(cleaner), (main_function)-[:Является_главной_функцией]->(cleaner), (addition_function1)-[:Является_дополнительной_функцией]->(cleaner), (addition_function2)-[:Является_дополнительной_функцией]->(cleaner)'
-
-                app.query(query)
-                print(values)
-
-    window.close()
+        # elif event == 'РћР±РЅРѕРІРёС‚СЊ':
+        #     window = sg.Window('File Compare', layout)
+        elif event == 'РСЃРєР°С‚СЊ СЌРєСЂР°РЅ':
+            screen = app.query(f"MATCH (sc)-[sem:Semantic]-(events) WHERE sem.name = 'РћС‚РЅРѕСЃРёС‚СЃСЏВ Рє' AND sc.name = '{values[0]}' return events.name AS name;")
+            ev = app.query(f"MATCH (sc)-[sem:Semantic]-(events) WHERE sem.name = 'РћС‚РЅРѕСЃРёС‚СЃСЏВ Рє' AND sc.name = '{values[0]}' return events.event AS name;")
+            print(f'РЎРѕР±С‹С‚РёСЏ СЌРєСЂР°РЅР° {values[0]}:')
+            for i in range(len(screen)):
+                print('  ' + screen[i] + ' (' + ev[i] + ')')
+            print()
+        elif event == 'РСЃРєР°С‚СЊ СЌР»РµРјРµРЅС‚':
+            screen = app.query(
+                f"MATCH (sc)-[sem:Semantic]-(events) WHERE sem.name = 'РћС‚СЃР»РµР¶РёРІР°РµС‚' AND sc.name = '{values[1]}' return events.name AS name;")
+            ev = app.query(
+                f"MATCH (sc)-[sem:Semantic]-(events) WHERE sem.name = 'РћС‚СЃР»РµР¶РёРІР°РµС‚' AND sc.name = '{values[1]}' return events.event AS name;")
+            print(f'РЎРѕР±С‹С‚РёСЏ РѕР±СЉРµРєС‚Р° {values[1]}:')
+            for i in range(len(screen)):
+                print('  ' + screen[i] + ' (' + ev[i] + ')')
+            print()
+        elif event == 'РЎ СЂРµРіРёСЃС‚СЂР°С†РёРµР№':
+            print('Р’С‹РІРѕРґ СЃС†РµРЅР°СЂРёСЏ Р·Р°РєР°Р·Р° СЃ СЂРµРіРёСЃС‚СЂР°С†РёРµР№:\n  ', end='')
+            path = ['РљР°С‚РµРіРѕСЂРёРё']
+            print(path[-1], end='')
+            while len(app.query(f"MATCH (sc)-[sem:Semantic]->(scs) WHERE sc.name = '{path[-1]}' AND '1' in sem.script return scs.name AS name;")) > 0:
+                path.append(app.query(f"MATCH (sc)-[sem:Semantic]->(scs) WHERE sc.name = '{path[-1]}' AND '1' in sem.script return scs.name AS name;")[0])
+                print(' -> ' + path[-1], end='')
+            print('\n')
+        elif event == 'Р‘РµР· СЂРµРіРёСЃС‚СЂР°С†РёРё':
+            print('Р’С‹РІРѕРґ СЃС†РµРЅР°СЂРёСЏ Р·Р°РєР°Р·Р° Р±РµР· СЂРµРіРёСЃС‚СЂР°С†РёРё:\n  ', end='')
+            path = ['РљР°С‚РµРіРѕСЂРёРё']
+            print(path[-1], end='')
+            while len(app.query(f"MATCH (sc)-[sem:Semantic]->(scs) WHERE sc.name = '{path[-1]}' AND '2' in sem.script return scs.name AS name;")) > 0:
+                path.append(app.query(f"MATCH (sc)-[sem:Semantic]->(scs) WHERE sc.name = '{path[-1]}' AND '2' in sem.script return scs.name AS name;")[0])
+                print(' -> ' + path[-1], end='')
+            print('\n')
+    
+    app.close()
